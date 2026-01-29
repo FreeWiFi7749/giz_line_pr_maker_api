@@ -1,11 +1,14 @@
+import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.core.auth import verify_api_key
 from app.core.database import get_db
@@ -165,6 +168,39 @@ async def track_pr(
     return TrackResponse(success=True)
 
 
+def is_valid_redirect_url(url: str) -> bool:
+    """
+    Validate redirect URL to prevent open redirect attacks.
+    Only allows http/https schemes.
+    """
+    try:
+        parsed = urlsplit(url)
+        if parsed.scheme not in {"http", "https"}:
+            return False
+        if not parsed.netloc:
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def build_redirect_url_with_utm(base_url: str, utm_campaign: str, utm_content: str) -> str:
+    """
+    Build redirect URL with UTM parameters using proper URL parsing.
+    Handles existing query params and fragments correctly.
+    """
+    parts = urlsplit(base_url)
+    query_params = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query_params.update({
+        "utm_source": "line",
+        "utm_medium": "pr_bubble",
+        "utm_campaign": utm_campaign,
+        "utm_content": utm_content,
+    })
+    new_query = urlencode(query_params)
+    return urlunsplit(parts._replace(query=new_query))
+
+
 @router.get("/{pr_id}/redirect")
 async def redirect_pr(
     pr_id: uuid.UUID,
@@ -183,19 +219,21 @@ async def redirect_pr(
             detail="PR not found",
         )
 
+    if not is_valid_redirect_url(pr.link_url):
+        logger.warning(
+            "Invalid redirect URL detected: pr_id=%s, url=%s",
+            pr_id,
+            pr.link_url,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect target",
+        )
+
     await service.track_pr(pr_id, "click")
 
-    base_url = pr.link_url
     utm_campaign = pr.utm_campaign or f"pr_{pr_id}"
-    utm_content = datetime.now().strftime("%Y%m%d_%H%M")
+    utm_content = datetime.now(timezone.utc).strftime("%Y%m%d_%H%MZ")
 
-    separator = "&" if "?" in base_url else "?"
-    utm_params = (
-        f"utm_source=line"
-        f"&utm_medium=pr_bubble"
-        f"&utm_campaign={quote(utm_campaign, safe='')}"
-        f"&utm_content={quote(utm_content, safe='')}"
-    )
-
-    redirect_url = f"{base_url}{separator}{utm_params}"
+    redirect_url = build_redirect_url_with_utm(pr.link_url, utm_campaign, utm_content)
     return RedirectResponse(url=redirect_url, status_code=302)
