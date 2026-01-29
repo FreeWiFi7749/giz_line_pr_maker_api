@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
-from app.core.auth import verify_cf_access
+from app.core.auth import verify_api_key
 from app.schemas.pr_bubble import ImageUploadResponse
 from app.services.r2_service import R2Service, get_r2_service
 
@@ -20,7 +20,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 async def upload_image(
     file: UploadFile = File(...),
     r2_service: R2Service = Depends(get_r2_service),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(

@@ -23,6 +23,9 @@ app = FastAPI(
     description="API for managing LINE Flex Message PR bubbles",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 app.add_middleware(
