@@ -187,17 +187,22 @@ def is_valid_redirect_url(url: str) -> bool:
 def build_redirect_url_with_utm(base_url: str, utm_campaign: str, utm_content: str) -> str:
     """
     Build redirect URL with UTM parameters using proper URL parsing.
-    Handles existing query params and fragments correctly.
+    Handles existing query params (including multi-valued) and fragments correctly.
     """
     parts = urlsplit(base_url)
-    query_params = dict(parse_qsl(parts.query, keep_blank_values=True))
-    query_params.update({
-        "utm_source": "line",
-        "utm_medium": "pr_bubble",
-        "utm_campaign": utm_campaign,
-        "utm_content": utm_content,
-    })
-    new_query = urlencode(query_params)
+    utm_keys = {"utm_source", "utm_medium", "utm_campaign", "utm_content"}
+    query_pairs = [
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=True)
+        if k not in utm_keys
+    ]
+    query_pairs += [
+        ("utm_source", "line"),
+        ("utm_medium", "pr_bubble"),
+        ("utm_campaign", utm_campaign),
+        ("utm_content", utm_content),
+    ]
+    new_query = urlencode(query_pairs, doseq=True)
     return urlunsplit(parts._replace(query=new_query))
 
 
