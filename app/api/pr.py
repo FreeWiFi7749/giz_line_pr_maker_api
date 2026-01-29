@@ -1,7 +1,10 @@
 import uuid
+from datetime import datetime
 from typing import Optional
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import verify_api_key
@@ -160,3 +163,39 @@ async def track_pr(
             detail="PR not found",
         )
     return TrackResponse(success=True)
+
+
+@router.get("/{pr_id}/redirect")
+async def redirect_pr(
+    pr_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Redirect endpoint for click tracking.
+    Records a click and redirects to the PR's link_url with UTM parameters.
+    No API key required as this is accessed directly by users.
+    """
+    service = PRService(db)
+    pr = await service.get_pr_by_id(pr_id)
+    if not pr:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="PR not found",
+        )
+
+    await service.track_pr(pr_id, "click")
+
+    base_url = pr.link_url
+    utm_campaign = pr.utm_campaign or f"pr_{pr_id}"
+    utm_content = datetime.now().strftime("%Y%m%d_%H%M")
+
+    separator = "&" if "?" in base_url else "?"
+    utm_params = (
+        f"utm_source=line"
+        f"&utm_medium=pr_bubble"
+        f"&utm_campaign={quote(utm_campaign, safe='')}"
+        f"&utm_content={quote(utm_content, safe='')}"
+    )
+
+    redirect_url = f"{base_url}{separator}{utm_params}"
+    return RedirectResponse(url=redirect_url, status_code=302)
