@@ -29,8 +29,8 @@ class PRBubble(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    title: Mapped[str] = mapped_column(String(40), nullable=False)
-    description: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(60), nullable=False)
+    description: Mapped[str] = mapped_column(String(200), nullable=False)
     image_url: Mapped[str] = mapped_column(String(500), nullable=False)
     link_url: Mapped[str] = mapped_column(String(500), nullable=False)
 

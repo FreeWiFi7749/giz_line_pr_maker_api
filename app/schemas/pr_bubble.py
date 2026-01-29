@@ -8,8 +8,8 @@ from app.models.pr_bubble import PRStatus, TagType
 
 
 class PRBubbleBase(BaseModel):
-    title: str = Field(..., max_length=40, description="PR title (max 40 characters)")
-    description: str = Field(..., max_length=100, description="PR description (max 100 characters)")
+    title: str = Field(..., max_length=60, description="PR title (max 60 characters)")
+    description: str = Field(..., max_length=200, description="PR description (max 200 characters)")
     image_url: str = Field(..., max_length=500, description="Image URL")
     link_url: str = Field(..., max_length=500, description="Link URL")
     tag_type: TagType = Field(default=TagType.GIZMART, description="Tag type")
@@ -45,8 +45,8 @@ class PRBubbleCreate(PRBubbleBase):
 
 
 class PRBubbleUpdate(BaseModel):
-    title: Optional[str] = Field(default=None, max_length=40)
-    description: Optional[str] = Field(default=None, max_length=100)
+    title: Optional[str] = Field(default=None, max_length=60)
+    description: Optional[str] = Field(default=None, max_length=200)
     image_url: Optional[str] = Field(default=None, max_length=500)
     link_url: Optional[str] = Field(default=None, max_length=500)
     tag_type: Optional[TagType] = None
