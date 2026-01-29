@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import verify_api_key, verify_cf_access
+from app.core.auth import verify_api_key
 from app.core.database import get_db
 from app.models.pr_bubble import PRStatus
 from app.schemas.pr_bubble import (
@@ -29,7 +29,7 @@ async def get_pr_list(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     service = PRService(db)
     items, total = await service.get_pr_list(status=status, page=page, limit=limit)
@@ -58,7 +58,7 @@ async def get_active_prs(
 async def get_pr(
     pr_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     service = PRService(db)
     pr = await service.get_pr_by_id(pr_id)
@@ -74,7 +74,7 @@ async def get_pr(
 async def create_pr(
     data: PRBubbleCreate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     service = PRService(db)
     pr = await service.create_pr(data)
@@ -86,7 +86,7 @@ async def update_pr(
     pr_id: uuid.UUID,
     data: PRBubbleUpdate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     service = PRService(db)
     pr = await service.update_pr(pr_id, data)
@@ -102,7 +102,7 @@ async def update_pr(
 async def delete_pr(
     pr_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     service = PRService(db)
     deleted = await service.delete_pr(pr_id)
@@ -117,7 +117,7 @@ async def delete_pr(
 async def duplicate_pr(
     pr_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     service = PRService(db)
     pr = await service.duplicate_pr(pr_id)
@@ -133,7 +133,7 @@ async def duplicate_pr(
 async def get_pr_stats(
     pr_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(verify_cf_access),
+    _: bool = Depends(verify_api_key),
 ):
     service = PRService(db)
     stats = await service.get_pr_stats(pr_id)
